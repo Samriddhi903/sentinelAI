@@ -14,12 +14,13 @@ os.environ.setdefault("LOG_FORMAT", "console")
 
 from app.core.config import get_settings
 from app.database.connection import DatabaseManager, get_database_manager
-from app.dependencies import get_upload_service
+from app.dependencies import get_upload_service, get_event_repository, get_event_normalization_service
 from app.main import create_app
 from app.services.file_storage_service import FileStorageService
 from app.services.upload_service import UploadService
 from app.services.upload_validator import UploadValidator
 from tests.support.in_memory_upload_repository import InMemoryUploadRepository
+from tests.support.in_memory_event_repository import InMemoryEventRepository
 
 
 @pytest.fixture(autouse=True)
@@ -86,6 +87,59 @@ async def client_upload_connected(
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://testserver") as http_client:
         yield http_client, repository
+    app.dependency_overrides.clear()
+
+
+@pytest.fixture
+async def client_upload_with_event_repo(app, upload_dir: Path) -> AsyncIterator[tuple[AsyncClient, InMemoryUploadRepository, InMemoryEventRepository]]:
+    upload_repository = InMemoryUploadRepository()
+    event_repository = InMemoryEventRepository()
+    db_manager = build_db_manager(ping_result=True)
+    settings = get_settings()
+
+    def upload_service_factory() -> UploadService:
+        return UploadService(
+            db_manager=db_manager,
+            upload_repository=upload_repository,
+            file_storage=FileStorageService(settings),
+            upload_validator=UploadValidator(settings),
+        )
+
+    def event_repo_factory():
+        return event_repository
+
+    # build a parser registry for the normalizer
+    from app.parsers.registry import ParserRegistry
+    from app.parsers.nginx_parser import NginxParser
+    from app.parsers.apache_parser import ApacheParser
+    from app.parsers.syslog_parser import SyslogParser
+    from app.parsers.json_log_parser import JsonLogParser
+    from app.services.event_normalization_service import EventNormalizationService
+
+    registry = ParserRegistry()
+    registry.register_parser(NginxParser())
+    registry.register_parser(ApacheParser())
+    registry.register_parser(SyslogParser())
+    registry.register_parser(JsonLogParser())
+
+    def event_normalizer_factory() -> EventNormalizationService:
+        settings = get_settings()
+        return EventNormalizationService(
+            upload_repository=upload_repository,
+            event_repository=event_repository,
+            file_storage=FileStorageService(settings),
+            parser_registry=registry,
+        )
+
+    # override upload service and event normalization provider
+    app.dependency_overrides[get_upload_service] = upload_service_factory
+    app.dependency_overrides[get_event_repository] = event_repo_factory
+    app.dependency_overrides[get_event_normalization_service] = event_normalizer_factory
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://testserver") as http_client:
+        yield http_client, upload_repository, event_repository
+
     app.dependency_overrides.clear()
 
 

@@ -18,6 +18,8 @@ from app.parsers.nginx_parser import NginxParser
 from app.parsers.apache_parser import ApacheParser
 from app.parsers.syslog_parser import SyslogParser
 from app.parsers.json_log_parser import JsonLogParser
+from app.repositories.event_repository import EventRepository
+from app.services.event_normalization_service import EventNormalizationService
 
 SettingsDep = Annotated[Settings, Depends(get_settings)]
 DatabaseManagerDep = Annotated[DatabaseManager, Depends(get_database_manager)]
@@ -56,20 +58,26 @@ def get_upload_validator(settings: SettingsDep) -> UploadValidator:
 UploadValidatorDep = Annotated[UploadValidator, Depends(get_upload_validator)]
 
 
-def get_upload_service(
-    db_manager: DatabaseManagerDep,
-    upload_repository: UploadRepositoryDep,
-    file_storage: FileStorageServiceDep,
-    upload_validator: UploadValidatorDep,
-) -> UploadService:
-    # Build a parser registry with default parsers
+def get_parser_registry() -> ParserRegistry:
     registry = ParserRegistry()
     registry.register_parser(NginxParser())
     registry.register_parser(ApacheParser())
     registry.register_parser(SyslogParser())
     registry.register_parser(JsonLogParser())
+    return registry
 
-    detection_service = FormatDetectionService(registry)
+
+ParserRegistryDep = Annotated[ParserRegistry, Depends(get_parser_registry)]
+
+
+def get_upload_service(
+    db_manager: DatabaseManagerDep,
+    upload_repository: UploadRepositoryDep,
+    file_storage: FileStorageServiceDep,
+    upload_validator: UploadValidatorDep,
+    parser_registry: ParserRegistryDep,
+) -> UploadService:
+    detection_service = FormatDetectionService(parser_registry)
 
     return UploadService(
         db_manager=db_manager,
@@ -81,3 +89,29 @@ def get_upload_service(
 
 
 UploadServiceDep = Annotated[UploadService, Depends(get_upload_service)]
+
+
+def get_event_repository(db_manager: DatabaseManagerDep) -> EventRepository:
+    if db_manager.database is None:
+        raise DatabaseUnavailableError()
+    return EventRepository(db_manager.database)
+
+
+EventRepositoryDep = Annotated[EventRepository, Depends(get_event_repository)]
+
+
+def get_event_normalization_service(
+    upload_repository: UploadRepositoryDep,
+    event_repository: EventRepositoryDep,
+    file_storage: FileStorageServiceDep,
+    parser_registry: ParserRegistryDep,
+) -> EventNormalizationService:
+    return EventNormalizationService(
+        upload_repository=upload_repository,
+        event_repository=event_repository,
+        file_storage=file_storage,
+        parser_registry=parser_registry,
+    )
+
+
+EventNormalizationServiceDep = Annotated[EventNormalizationService, Depends(get_event_normalization_service)]

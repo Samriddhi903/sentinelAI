@@ -8,6 +8,8 @@ class UploadStatus(StrEnum):
     UPLOADED = "uploaded"
     PROCESSING = "processing"
     PROCESSED = "processed"
+    NORMALIZING = "normalizing"
+    NORMALIZED = "normalized"
     FAILED = "failed"
 
 

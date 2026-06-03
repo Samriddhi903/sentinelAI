@@ -2,7 +2,7 @@
 
 from fastapi import APIRouter, File, UploadFile
 
-from app.dependencies import UploadServiceDep
+from app.dependencies import UploadServiceDep, EventNormalizationServiceDep
 from app.schemas.upload import UploadCreateResponse, UploadStatusResponse
 
 router = APIRouter(prefix="/upload", tags=["upload"])
@@ -31,3 +31,11 @@ async def process_upload(
     upload_service: UploadServiceDep,
 ) -> UploadStatusResponse:
     return await upload_service.process_upload(upload_id)
+
+
+@router.post("/{upload_id}/normalize")
+async def normalize_upload(
+    upload_id: str,
+    normalizer: EventNormalizationServiceDep,
+):
+    return await normalizer.normalize_upload(upload_id)

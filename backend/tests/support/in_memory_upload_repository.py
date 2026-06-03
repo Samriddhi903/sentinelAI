@@ -74,3 +74,11 @@ class InMemoryUploadRepository:
 
     async def delete_by_upload_id(self, upload_id: str) -> None:
         self.documents.pop(upload_id, None)
+
+    async def update_normalization_result(self, upload_id: str, *, status: UploadStatus, normalized_at) -> dict[str, Any] | None:
+        document = self.documents.get(upload_id)
+        if document is None:
+            return None
+        document = {**document, "status": status.value, "normalized_at": normalized_at}
+        self.documents[upload_id] = document
+        return document
