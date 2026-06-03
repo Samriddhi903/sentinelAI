@@ -102,6 +102,60 @@ Demo log snippets are in `samples/`:
 
 These will be used in parser and detection phases.
 
+## Phase 2 — File Upload
+
+Phase 2 adds secure log file upload with validation, local storage, MongoDB metadata persistence, and status polling.
+
+### Upload Endpoints
+
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/api/v1/upload` | Upload a log file (201 on success) |
+| GET | `/api/v1/upload/{upload_id}/status` | Poll upload processing status |
+
+### Upload Validation
+
+- Allowed extensions: `.log`, `.txt`, `.json`, `.gz`
+- MIME type verification via `python-magic-bin` (Windows-compatible)
+- Max file size controlled by `MAX_UPLOAD_SIZE_MB`
+- Filename sanitization (path traversal and unsafe names rejected)
+- Gzip bomb detection for `.gz` files (stored as-is; decompression deferred to Phase 3+)
+
+### Upload Status Lifecycle
+
+1. `pending` — metadata record created
+2. `uploaded` — file saved to disk successfully
+3. `failed` — storage error after record creation
+
+`format` and `confidence` remain `null` until Phase 3 format detection.
+
+### Error Responses
+
+Validation and service errors return structured JSON:
+
+```json
+{
+  "detail": "File extension not allowed: .exe",
+  "code": "INVALID_EXTENSION"
+}
+```
+
+### Database — `uploads` Collection
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `upload_id` | string (UUID) | Public API identifier |
+| `filename` | string | Stored name on disk (`{uuid}{ext}`) |
+| `original_name` | string | Sanitized original filename |
+| `status` | string | `pending`, `uploaded`, or `failed` |
+| `format` | string \| null | Detected format (Phase 3+) |
+| `confidence` | float \| null | Detection confidence (Phase 3+) |
+| `size_bytes` | int | File size |
+| `uploaded_at` | datetime | Upload timestamp (UTC) |
+| `processed_at` | datetime \| null | Processing completion (later phases) |
+
+**Indexes:** `upload_id` (unique), `uploaded_at`, `status`
+
 ## License
 
 Academic / placement project.

@@ -7,9 +7,13 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.v1.routes.health import router as health_router
+from app.api.v1.routes.upload import router as upload_router
 from app.core.config import get_settings
+from app.core.exception_handlers import register_exception_handlers
 from app.core.logging import configure_logging, get_logger
 from app.database.connection import get_database_manager
+from app.repositories.upload_repository import UploadRepository
+from app.services.file_storage_service import FileStorageService
 
 logger = get_logger(__name__)
 
@@ -26,6 +30,13 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     )
 
     await db_manager.connect(settings.mongodb_uri, settings.mongodb_db_name)
+
+    if db_manager.database is not None:
+        upload_repository = UploadRepository(db_manager.database)
+        await upload_repository.ensure_indexes()
+        file_storage = FileStorageService(settings)
+        file_storage.ensure_upload_dir()
+
     yield
     await db_manager.disconnect()
     logger.info("SentinelAI application shutdown complete")
@@ -48,6 +59,9 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
 
+    register_exception_handlers(app)
+
     app.include_router(health_router, prefix="/api/v1")
+    app.include_router(upload_router, prefix="/api/v1")
 
     return app
