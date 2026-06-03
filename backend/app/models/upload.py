@@ -6,6 +6,8 @@ from enum import StrEnum
 class UploadStatus(StrEnum):
     PENDING = "pending"
     UPLOADED = "uploaded"
+    PROCESSING = "processing"
+    PROCESSED = "processed"
     FAILED = "failed"
 
 

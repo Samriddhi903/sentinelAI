@@ -43,6 +43,18 @@ class FileStorageService:
 
         return destination
 
+    async def read_file(self, stored_filename: str) -> bytes:
+        target = self._upload_dir / stored_filename
+        try:
+            async with aiofiles.open(target, mode="rb") as fh:
+                return await fh.read()
+        except OSError as exc:
+            logger.warning(
+                "Failed to read uploaded file",
+                extra={"filename": stored_filename, "error": str(exc)},
+            )
+            raise
+
     async def delete_file(self, stored_filename: str) -> None:
         target = self._upload_dir / stored_filename
         if target.exists():

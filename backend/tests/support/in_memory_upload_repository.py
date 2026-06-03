@@ -47,6 +47,28 @@ class InMemoryUploadRepository:
         self.documents[upload_id] = document
         return document
 
+    async def update_processing_result(
+        self,
+        upload_id: str,
+        *,
+        status: UploadStatus,
+        format: str | None,
+        confidence: float | None,
+        processed_at,
+    ) -> dict[str, Any] | None:
+        document = self.documents.get(upload_id)
+        if document is None:
+            return None
+        document = {
+            **document,
+            "status": status.value,
+            "format": format,
+            "confidence": confidence,
+            "processed_at": processed_at,
+        }
+        self.documents[upload_id] = document
+        return document
+
     async def find_by_upload_id(self, upload_id: str) -> dict[str, Any] | None:
         return self.documents.get(upload_id)
 

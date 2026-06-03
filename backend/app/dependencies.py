@@ -12,6 +12,12 @@ from app.services.file_storage_service import FileStorageService
 from app.services.health_service import HealthService
 from app.services.upload_service import UploadService
 from app.services.upload_validator import UploadValidator
+from app.services.format_detection_service import FormatDetectionService
+from app.parsers.registry import ParserRegistry
+from app.parsers.nginx_parser import NginxParser
+from app.parsers.apache_parser import ApacheParser
+from app.parsers.syslog_parser import SyslogParser
+from app.parsers.json_log_parser import JsonLogParser
 
 SettingsDep = Annotated[Settings, Depends(get_settings)]
 DatabaseManagerDep = Annotated[DatabaseManager, Depends(get_database_manager)]
@@ -56,11 +62,21 @@ def get_upload_service(
     file_storage: FileStorageServiceDep,
     upload_validator: UploadValidatorDep,
 ) -> UploadService:
+    # Build a parser registry with default parsers
+    registry = ParserRegistry()
+    registry.register_parser(NginxParser())
+    registry.register_parser(ApacheParser())
+    registry.register_parser(SyslogParser())
+    registry.register_parser(JsonLogParser())
+
+    detection_service = FormatDetectionService(registry)
+
     return UploadService(
         db_manager=db_manager,
         upload_repository=upload_repository,
         file_storage=file_storage,
         upload_validator=upload_validator,
+        format_detection_service=detection_service,
     )
 
 

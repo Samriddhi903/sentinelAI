@@ -56,6 +56,28 @@ class UploadRepository(BaseRepository):
         )
         return result
 
+    async def update_processing_result(
+        self,
+        upload_id: str,
+        *,
+        status: UploadStatus,
+        format: str | None,
+        confidence: float | None,
+        processed_at,
+    ) -> dict[str, Any] | None:
+        update = {
+            "$set": {
+                "status": status.value,
+                "format": format,
+                "confidence": confidence,
+                "processed_at": processed_at,
+            }
+        }
+        result = await self.collection.find_one_and_update(
+            {"upload_id": upload_id}, update, return_document=ReturnDocument.AFTER
+        )
+        return result
+
     async def find_by_upload_id(self, upload_id: str) -> dict[str, Any] | None:
         return await self.collection.find_one({"upload_id": upload_id})
 

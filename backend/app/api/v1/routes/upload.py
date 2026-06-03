@@ -23,3 +23,11 @@ async def get_upload_status(
     upload_service: UploadServiceDep,
 ) -> UploadStatusResponse:
     return await upload_service.get_upload_status(upload_id)
+
+
+@router.post("/{upload_id}/process", response_model=UploadStatusResponse)
+async def process_upload(
+    upload_id: str,
+    upload_service: UploadServiceDep,
+) -> UploadStatusResponse:
+    return await upload_service.process_upload(upload_id)

@@ -10,6 +10,8 @@ from app.repositories.upload_repository import UploadRepository
 from app.schemas.upload import UploadCreateResponse, UploadStatusResponse
 from app.services.file_storage_service import FileStorageService
 from app.services.upload_validator import UploadValidator
+from app.services.format_detection_service import FormatDetectionService
+from datetime import datetime, UTC
 
 logger = get_logger(__name__)
 
@@ -23,11 +25,13 @@ class UploadService:
         upload_repository: UploadRepository,
         file_storage: FileStorageService,
         upload_validator: UploadValidator,
+        format_detection_service: FormatDetectionService | None = None,
     ) -> None:
         self._db_manager = db_manager
         self._upload_repository = upload_repository
         self._file_storage = file_storage
         self._upload_validator = upload_validator
+        self._format_detection_service = format_detection_service
 
     async def create_upload(
         self,
@@ -86,6 +90,57 @@ class UploadService:
             size_bytes=document["size_bytes"],
             uploaded_at=document["uploaded_at"],
             processed_at=document.get("processed_at"),
+        )
+
+    async def process_upload(self, upload_id: str) -> UploadStatusResponse:
+        await self._require_database()
+
+        document = await self._upload_repository.find_by_upload_id(upload_id)
+        if document is None:
+            raise UploadNotFoundError(upload_id)
+
+        # Only process uploads that have been uploaded
+        if document["status"] != UploadStatus.UPLOADED.value:
+            raise FileStorageError("upload not in uploaded state")
+
+        # mark processing
+        await self._upload_repository.update_status(upload_id, UploadStatus.PROCESSING)
+
+        try:
+            content = await self._file_storage.read_file(document["filename"])  # bytes
+            text = content.decode("utf-8", errors="replace")
+
+            if self._format_detection_service is None:
+                detection = {"format": None, "confidence": 0.0, "alternatives": []}
+            else:
+                detection = self._format_detection_service.detect_format(text)
+
+            processed_at = datetime.now(UTC)
+
+            updated = await self._upload_repository.update_processing_result(
+                upload_id,
+                status=UploadStatus.PROCESSED,
+                format=detection.get("format"),
+                confidence=detection.get("confidence"),
+                processed_at=processed_at,
+            )
+        except Exception:
+            await self._upload_repository.update_status(upload_id, UploadStatus.FAILED)
+            raise
+
+        if updated is None:
+            raise FileStorageError("upload record missing after processing")
+
+        return UploadStatusResponse(
+            upload_id=updated["upload_id"],
+            original_name=updated["original_name"],
+            filename=updated["filename"],
+            status=updated["status"],
+            format=updated.get("format"),
+            confidence=updated.get("confidence"),
+            size_bytes=updated["size_bytes"],
+            uploaded_at=updated["uploaded_at"],
+            processed_at=updated.get("processed_at"),
         )
 
     async def _require_database(self) -> None:
