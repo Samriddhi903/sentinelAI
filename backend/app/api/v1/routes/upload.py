@@ -2,7 +2,12 @@
 
 from fastapi import APIRouter, File, UploadFile
 
-from app.dependencies import UploadServiceDep, EventNormalizationServiceDep
+from app.dependencies import (
+    UploadServiceDep,
+    EventNormalizationServiceDep,
+    SecurityAnalysisOrchestratorDep,
+)
+from app.schemas.security_analysis import SecurityAnalysisResponse, SecurityAnalysisSummaryResponse
 from app.schemas.upload import UploadCreateResponse, UploadStatusResponse
 
 router = APIRouter(prefix="/upload", tags=["upload"])
@@ -39,3 +44,19 @@ async def normalize_upload(
     normalizer: EventNormalizationServiceDep,
 ):
     return await normalizer.normalize_upload(upload_id)
+
+
+@router.post("/{upload_id}/analyze", response_model=SecurityAnalysisSummaryResponse)
+async def analyze_upload(
+    upload_id: str,
+    orchestrator: SecurityAnalysisOrchestratorDep,
+) -> SecurityAnalysisSummaryResponse:
+    return await orchestrator.analyze_upload(upload_id)
+
+
+@router.get("/{upload_id}/analysis", response_model=SecurityAnalysisResponse)
+async def get_analysis(
+    upload_id: str,
+    orchestrator: SecurityAnalysisOrchestratorDep,
+) -> SecurityAnalysisResponse:
+    return await orchestrator.get_analysis(upload_id)

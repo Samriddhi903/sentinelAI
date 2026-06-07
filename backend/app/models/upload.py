@@ -10,6 +10,10 @@ class UploadStatus(StrEnum):
     PROCESSED = "processed"
     NORMALIZING = "normalizing"
     NORMALIZED = "normalized"
+    FEATURE_EXTRACTING = "feature_extracting"
+    FEATURES_GENERATED = "features_generated"
+    ANALYZING = "analyzing"
+    ANALYZED = "analyzed"
     FAILED = "failed"
 
 
@@ -18,7 +22,7 @@ UPLOADS_COLLECTION = "uploads"
 ALLOWED_EXTENSIONS = {".log", ".txt", ".json", ".gz"}
 
 EXTENSION_MIME_MAP: dict[str, set[str]] = {
-    ".log": {"text/plain", "application/octet-stream"},
+    ".log": {"text/plain", "application/octet-stream","text/html"},
     ".txt": {"text/plain", "application/octet-stream"},
     ".json": {"application/json", "text/plain", "application/octet-stream"},
     ".gz": {"application/gzip", "application/x-gzip", "application/octet-stream"},

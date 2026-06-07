@@ -30,3 +30,7 @@ class EventRepository(BaseRepository):
             if "timestamp" not in e:
                 e["timestamp"] = datetime.utcnow()
         await self.collection.insert_many(events)
+
+    async def find_by_upload_id(self, upload_id: str) -> list[dict[str, Any]]:
+        cursor = self.collection.find({"upload_id": upload_id})
+        return [doc async for doc in cursor]

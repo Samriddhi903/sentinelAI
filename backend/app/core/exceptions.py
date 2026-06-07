@@ -91,3 +91,21 @@ class FileStorageError(AppError):
             code="FILE_STORAGE_ERROR",
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         )
+
+
+class InvalidUploadStateError(AppError):
+    def __init__(self, reason: str) -> None:
+        super().__init__(
+            detail=reason,
+            code="INVALID_UPLOAD_STATE",
+            status_code=status.HTTP_400_BAD_REQUEST,
+        )
+
+
+class AnalysisAlreadyExistsError(AppError):
+    def __init__(self, upload_id: str) -> None:
+        super().__init__(
+            detail=f"Upload already analyzed: {upload_id}",
+            code="ANALYSIS_ALREADY_EXISTS",
+            status_code=status.HTTP_409_CONFLICT,
+        )

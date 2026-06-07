@@ -20,6 +20,17 @@ from app.parsers.syslog_parser import SyslogParser
 from app.parsers.json_log_parser import JsonLogParser
 from app.repositories.event_repository import EventRepository
 from app.services.event_normalization_service import EventNormalizationService
+from app.repositories.feature_repository import FeatureRepository
+from app.repositories.detection_repository import DetectionRepository
+from app.repositories.risk_assessment_repository import RiskAssessmentRepository
+from app.repositories.investigation_repository import InvestigationRepository
+from app.services.feature_engineering_service import FeatureEngineeringService
+from app.services.detection_engine import DetectionEngine
+from app.services.mitre_mapper import MitreMapper
+from app.services.risk_scoring_engine import RiskScoringEngine
+from app.services.timeline_builder import TimelineBuilder
+from app.services.investigation_service import InvestigationService
+from app.services.security_analysis_orchestrator import SecurityAnalysisOrchestrator
 
 SettingsDep = Annotated[Settings, Depends(get_settings)]
 DatabaseManagerDep = Annotated[DatabaseManager, Depends(get_database_manager)]
@@ -115,3 +126,128 @@ def get_event_normalization_service(
 
 
 EventNormalizationServiceDep = Annotated[EventNormalizationService, Depends(get_event_normalization_service)]
+
+
+def get_feature_repository(db_manager: DatabaseManagerDep) -> FeatureRepository:
+    if db_manager.database is None:
+        raise DatabaseUnavailableError()
+    return FeatureRepository(db_manager.database)
+
+
+FeatureRepositoryDep = Annotated[FeatureRepository, Depends(get_feature_repository)]
+
+
+def get_detection_repository(db_manager: DatabaseManagerDep) -> DetectionRepository:
+    if db_manager.database is None:
+        raise DatabaseUnavailableError()
+    return DetectionRepository(db_manager.database)
+
+
+DetectionRepositoryDep = Annotated[DetectionRepository, Depends(get_detection_repository)]
+
+
+def get_risk_assessment_repository(db_manager: DatabaseManagerDep) -> RiskAssessmentRepository:
+    if db_manager.database is None:
+        raise DatabaseUnavailableError()
+    return RiskAssessmentRepository(db_manager.database)
+
+
+RiskAssessmentRepositoryDep = Annotated[RiskAssessmentRepository, Depends(get_risk_assessment_repository)]
+
+
+def get_investigation_repository(db_manager: DatabaseManagerDep) -> InvestigationRepository:
+    if db_manager.database is None:
+        raise DatabaseUnavailableError()
+    return InvestigationRepository(db_manager.database)
+
+
+InvestigationRepositoryDep = Annotated[InvestigationRepository, Depends(get_investigation_repository)]
+
+
+def get_detection_engine() -> DetectionEngine:
+    return DetectionEngine()
+
+
+DetectionEngineDep = Annotated[DetectionEngine, Depends(get_detection_engine)]
+
+
+def get_mitre_mapper() -> MitreMapper:
+    return MitreMapper()
+
+
+MitreMapperDep = Annotated[MitreMapper, Depends(get_mitre_mapper)]
+
+
+def get_risk_scoring_engine() -> RiskScoringEngine:
+    return RiskScoringEngine()
+
+
+RiskScoringEngineDep = Annotated[RiskScoringEngine, Depends(get_risk_scoring_engine)]
+
+
+def get_timeline_builder() -> TimelineBuilder:
+    return TimelineBuilder()
+
+
+TimelineBuilderDep = Annotated[TimelineBuilder, Depends(get_timeline_builder)]
+
+
+def get_investigation_service(
+    repository: InvestigationRepositoryDep,
+    risk_engine: RiskScoringEngineDep,
+    timeline_builder: TimelineBuilderDep,
+    mitre_mapper: MitreMapperDep,
+) -> InvestigationService:
+    return InvestigationService(
+        repository=repository,
+        risk_engine=risk_engine,
+        timeline_builder=timeline_builder,
+        mitre_mapper=mitre_mapper,
+    )
+
+
+InvestigationServiceDep = Annotated[InvestigationService, Depends(get_investigation_service)]
+
+
+def get_security_analysis_orchestrator(
+    upload_repository: UploadRepositoryDep,
+    feature_repository: FeatureRepositoryDep,
+    detection_repository: DetectionRepositoryDep,
+    risk_repository: RiskAssessmentRepositoryDep,
+    investigation_repository: InvestigationRepositoryDep,
+    detection_engine: DetectionEngineDep,
+    mitre_mapper: MitreMapperDep,
+    risk_engine: RiskScoringEngineDep,
+    timeline_builder: TimelineBuilderDep,
+    investigation_service: InvestigationServiceDep,
+) -> SecurityAnalysisOrchestrator:
+    return SecurityAnalysisOrchestrator(
+        upload_repository=upload_repository,
+        feature_repository=feature_repository,
+        detection_repository=detection_repository,
+        risk_repository=risk_repository,
+        investigation_repository=investigation_repository,
+        detection_engine=detection_engine,
+        mitre_mapper=mitre_mapper,
+        risk_engine=risk_engine,
+        timeline_builder=timeline_builder,
+        investigation_service=investigation_service,
+    )
+
+
+SecurityAnalysisOrchestratorDep = Annotated[SecurityAnalysisOrchestrator, Depends(get_security_analysis_orchestrator)]
+
+
+def get_feature_engineering_service(
+    upload_repository: UploadRepositoryDep,
+    event_repository: EventRepositoryDep,
+    feature_repository: FeatureRepositoryDep,
+) -> FeatureEngineeringService:
+    return FeatureEngineeringService(
+        upload_repository=upload_repository,
+        event_repository=event_repository,
+        feature_repository=feature_repository,
+    )
+
+
+FeatureEngineeringServiceDep = Annotated[FeatureEngineeringService, Depends(get_feature_engineering_service)]

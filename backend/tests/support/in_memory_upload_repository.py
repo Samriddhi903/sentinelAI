@@ -82,3 +82,19 @@ class InMemoryUploadRepository:
         document = {**document, "status": status.value, "normalized_at": normalized_at}
         self.documents[upload_id] = document
         return document
+
+    async def update_feature_extraction_result(self, upload_id: str, *, status: UploadStatus, generated_at) -> dict[str, Any] | None:
+        document = self.documents.get(upload_id)
+        if document is None:
+            return None
+        document = {**document, "status": status.value, "features_generated_at": generated_at}
+        self.documents[upload_id] = document
+        return document
+
+    async def update_analysis_result(self, upload_id: str, *, status: UploadStatus, analyzed_at) -> dict[str, Any] | None:
+        document = self.documents.get(upload_id)
+        if document is None:
+            return None
+        document = {**document, "status": status.value, "analysis_generated_at": analyzed_at}
+        self.documents[upload_id] = document
+        return document
