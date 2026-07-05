@@ -4,6 +4,8 @@ AI-powered Security Intelligence Platform — final-year placement project.
 
 SentinelAI ingests log files, normalizes events, detects threats, maps findings to MITRE ATT&CK, and generates remediation guidance through a multi-agent workflow.
 
+For full setup instructions on a new laptop, see `SETUP.md`.
+
 ## Phase 1 — Backend Foundation
 
 Phase 1 delivers the FastAPI application skeleton with centralized configuration, structured logging, MongoDB connectivity (degraded mode), dependency injection, and health endpoints.
