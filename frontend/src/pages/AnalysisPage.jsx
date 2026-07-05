@@ -46,6 +46,7 @@ export default function AnalysisPage() {
         const res = await sentinelApi.getAnalysis(uploadId)
         if (!alive) return
         setAnalysis(res)
+        console.log("Analysis Response:", res)
       } catch (e) {
         if (!alive) return
         setError(e?.response?.data?.detail || e.message || 'Failed to fetch analysis')
@@ -72,6 +73,26 @@ export default function AnalysisPage() {
     return 'error'
   })()
 
+  const anomalyDetection = analysis?.anomaly_detection
+  const anomalyScore = anomalyDetection?.anomaly_score ?? null
+  const isAnomalous = anomalyDetection?.is_anomalous ?? null
+
+  const anomalyColor = (() => {
+    const s = anomalyScore
+    const n = typeof s === 'number' ? s : Number(s)
+    if (!Number.isFinite(n)) return 'default'
+    if (n <= 30) return 'success'
+    if (n <= 60) return 'warning'
+    if (n <= 80) return 'warning'
+    return 'error'
+  })()
+
+  const anomalyLabel = (() => {
+    if (!Number.isFinite(Number(anomalyScore))) return '—'
+    if (isAnomalous === true) return 'Anomalous'
+    return 'Not Anomalous'
+  })()
+
 
   const detectedAttacks = useMemo(() => {
     const detections = analysis?.detections || []
@@ -82,6 +103,7 @@ export default function AnalysisPage() {
     }
     return Array.from(byType.entries()).map(([type, count]) => ({ type, count }))
   }, [analysis])
+
 
   return (
     <Box>
@@ -151,7 +173,36 @@ export default function AnalysisPage() {
                     </Typography>
                   </Paper>
                 </Grid>
+
+                <Grid item xs={12} md={4}>
+                  <Paper variant="outlined" sx={{ p: 1.7, bgcolor: 'rgba(30,41,59,0.25)' }}>
+                    <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+                      Anomaly Score
+                    </Typography>
+                    <Typography sx={{ fontSize: 28, fontWeight: 900, lineHeight: 1.1 }}>
+                      {anomalyScore ?? '—'}
+                    </Typography>
+                  </Paper>
+                </Grid>
+                <Grid item xs={12} md={4}>
+                  <Paper variant="outlined" sx={{ p: 1.7, bgcolor: 'rgba(30,41,59,0.25)' }}>
+                    <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+                      Anomaly Verdict
+                    </Typography>
+                    <Stack direction="column" spacing={0.5} sx={{ mt: 1 }}>
+                      <Chip
+                        label={anomalyLabel}
+                        color={anomalyColor}
+                        variant="outlined"
+                      />
+                      <Typography variant="body2" sx={{ color: 'text.secondary', fontSize: 13 }}>
+                        Score: {anomalyScore ?? '—'}
+                      </Typography>
+                    </Stack>
+                  </Paper>
+                </Grid>
               </Grid>
+
 
               <Divider sx={{ my: 1.2 }} />
               <Stack direction={{ xs: 'column', md: 'row' }} spacing={1.5} alignItems={{ xs: 'flex-start', md: 'center' }} justifyContent="space-between">
@@ -178,7 +229,7 @@ export default function AnalysisPage() {
             <Stack direction={{ xs: 'column', md: 'row' }} alignItems={{ xs: 'flex-start', md: 'center' }} justifyContent="space-between">
               <Typography sx={{ fontWeight: 850, fontSize: 16 }}>Detected Attacks</Typography>
               <Stack direction="row" spacing={1}>
-                <Chip label="View timeline" clickable="false" />
+                <Chip label="View timeline" clickable={false} />
                 <Button size="small" variant="outlined" onClick={() => navigate(`/timeline/${uploadId}`)}>
                   Timeline
                 </Button>

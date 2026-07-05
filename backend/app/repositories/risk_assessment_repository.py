@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 from uuid import uuid4
 
@@ -25,9 +25,11 @@ class RiskAssessmentRepository(BaseRepository):
             return None
         for assessment in assessments:
             assessment.setdefault("risk_id", str(uuid4()))
-            assessment.setdefault("generated_at", datetime.utcnow())
-        await self.collection.insert_many(assessments)
+            assessment.setdefault("generated_at", datetime.now(UTC))
+            await self.collection.replace_one(
+                {"upload_id": assessment["upload_id"]}, assessment, upsert=True
+            )
 
     async def find_by_upload_id(self, upload_id: str) -> list[dict[str, Any]]:
-        cursor = self.collection.find({"upload_id": upload_id})
+        cursor = self.sort_cursor(self.collection.find({"upload_id": upload_id}))
         return [self.sanitize_document(doc) async for doc in cursor]

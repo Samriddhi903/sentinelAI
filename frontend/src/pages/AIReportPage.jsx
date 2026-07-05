@@ -7,6 +7,7 @@ import Button from '@mui/material/Button'
 import CircularProgress from '@mui/material/CircularProgress'
 import Alert from '@mui/material/Alert'
 import Divider from '@mui/material/Divider'
+import Chip from '@mui/material/Chip'
 
 import { sentinelApi } from '../services/sentinelApi'
 import { useParams } from 'react-router-dom'
@@ -18,6 +19,24 @@ function Section({ title, children }) {
       <Typography variant="body1" sx={{ color: 'text.secondary', whiteSpace: 'pre-wrap' }}>
         {children}
       </Typography>
+      <Divider sx={{ mt: 2, opacity: 0.2 }} />
+    </Box>
+  )
+}
+
+function ArraySection({ title, items, emptyText = '—' }) {
+  return (
+    <Box>
+      <Typography sx={{ fontWeight: 900, mb: 0.8 }}>{title}</Typography>
+      {items?.length ? (
+        <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
+          {items.map((item, idx) => (
+            <Chip key={`${title}-${item}-${idx}`} label={item} variant="outlined" />
+          ))}
+        </Stack>
+      ) : (
+        <Typography variant="body2" sx={{ color: 'text.secondary' }}>{emptyText}</Typography>
+      )}
       <Divider sx={{ mt: 2, opacity: 0.2 }} />
     </Box>
   )
@@ -183,15 +202,104 @@ export default function AIReportPage() {
             <Box>
               <Typography sx={{ fontWeight: 900, fontSize: 16, mb: 0.4 }}>Report Metadata</Typography>
               <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                Severity: <strong>{report.severity}</strong> · Risk Score: <strong>{report.risk_score}</strong>
+                Severity: <strong>{report.severity}</strong> · Risk Score: <strong>{report.risk_score}</strong> · Confidence: <strong>{report.metadata?.confidence ?? 'n/a'}</strong>
               </Typography>
             </Box>
             <Divider sx={{ opacity: 0.2 }} />
 
             <Section title="Executive Summary">{report.executive_summary}</Section>
-            <Section title="Attack Narrative">{report.attack_narrative}</Section>
+            <Section title="Executive Narrative">{report.executive_narrative || report.attack_narrative}</Section>
+
+            <Box>
+              <Typography sx={{ fontWeight: 900, mb: 0.8 }}>Attack Chain</Typography>
+              {Array.isArray(report.attack_chain) && report.attack_chain.length > 0 ? (
+                <Stack spacing={1.2}>
+                  {report.attack_chain.map((phase, idx) => (
+                    <Paper key={`${phase.name}-${idx}`} variant="outlined" sx={{ p: 1.2, bgcolor: 'rgba(30,41,59,0.25)' }}>
+                      <Typography sx={{ fontWeight: 850 }}>{phase.name}</Typography>
+                      <Typography variant="body2" sx={{ color: 'text.secondary', mt: 0.4 }}>
+                        Detections: {(phase.detections || []).join(', ')}
+                      </Typography>
+                      {phase.mitre?.length ? (
+                        <Typography variant="body2" sx={{ color: 'text.secondary', mt: 0.4 }}>
+                          MITRE: {phase.mitre.join(', ')}
+                        </Typography>
+                      ) : null}
+                      {phase.evidence && Object.keys(phase.evidence).length ? (
+                        <Box sx={{ mt: 0.6, display: 'flex', flexWrap: 'wrap', gap: 0.6 }}>
+                          {Object.entries(phase.evidence).map(([key, values]) => (
+                            values?.length ? (
+                              <Chip key={`${phase.name}-${key}`} label={`${key}: ${values.join(', ')}`} variant="outlined" size="small" />
+                            ) : null
+                          ))}
+                        </Box>
+                      ) : null}
+                    </Paper>
+                  ))}
+                </Stack>
+              ) : (
+                <Typography variant="body2" sx={{ color: 'text.secondary' }}>No attack chain data available.</Typography>
+              )}
+              <Divider sx={{ mt: 2, opacity: 0.2 }} />
+            </Box>
+
+            <ArraySection title="Affected Hosts" items={report.metadata?.affected_hosts || []} />
+            <ArraySection title="Affected Accounts" items={report.metadata?.affected_accounts || []} />
+            <ArraySection title="External IPs" items={report.iocs?.external_ips || []} />
+            <ArraySection title="Internal IPs" items={report.iocs?.internal_ips || []} />
+            <ArraySection title="Hosts" items={report.iocs?.hosts || []} />
+            <ArraySection title="Accounts" items={report.iocs?.accounts || []} />
+            <ArraySection title="Processes" items={report.iocs?.processes || []} />
+            <ArraySection title="Commands" items={report.iocs?.commands || []} />
+            <ArraySection title="Files" items={report.iocs?.files || []} />
+            <ArraySection title="Registry Keys" items={report.iocs?.registry_keys || []} />
+            <ArraySection title="Cron Jobs" items={report.iocs?.cron_jobs || []} />
+            <ArraySection title="Domains" items={report.iocs?.domains || []} />
+            <ArraySection title="URLs" items={report.iocs?.urls || []} />
+            <ArraySection title="Hashes" items={report.iocs?.hashes || []} />
+
+            <Box>
+              <Typography sx={{ fontWeight: 900, mb: 0.8 }}>MITRE ATT&CK</Typography>
+              {(report.mitre_table || []).length ? (
+                <Stack spacing={1}>
+                  {report.mitre_table.map((row, idx) => (
+                    <Paper key={`${row.mitre_id}-${idx}`} variant="outlined" sx={{ p: 1.1 }}>
+                      <Typography sx={{ fontWeight: 850 }}>{row.technique}</Typography>
+                      <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+                        {row.mitre_id} · {row.evidence}
+                      </Typography>
+                    </Paper>
+                  ))}
+                </Stack>
+              ) : (
+                <Typography variant="body2" sx={{ color: 'text.secondary' }}>No MITRE mappings available.</Typography>
+              )}
+              <Divider sx={{ mt: 2, opacity: 0.2 }} />
+            </Box>
+
             <Section title="Business Impact">{report.business_impact}</Section>
             <Section title="MITRE Analysis">{report.mitre_analysis}</Section>
+
+            <Box>
+              <Typography sx={{ fontWeight: 900, mb: 0.8 }}>Structured Recommendations</Typography>
+              <Stack spacing={1.2}>
+                {Object.entries(report.recommendations || {}).map(([group, items]) => (
+                  <Box key={group}>
+                    <Typography sx={{ fontWeight: 800, textTransform: 'capitalize' }}>{group.replace(/_/g, ' ')}</Typography>
+                    {items?.length ? (
+                      <Stack component="ul" sx={{ m: 0, pl: 2, '& li': { mb: 0.4 } }}>
+                        {items.map((item, idx) => (
+                          <li key={`${group}-${item}-${idx}`}>{item}</li>
+                        ))}
+                      </Stack>
+                    ) : (
+                      <Typography variant="body2" sx={{ color: 'text.secondary' }}>—</Typography>
+                    )}
+                  </Box>
+                ))}
+              </Stack>
+              <Divider sx={{ mt: 2, opacity: 0.2 }} />
+            </Box>
 
             <Box>
               <Typography sx={{ fontWeight: 900, mb: 0.8 }}>Recommended Actions</Typography>

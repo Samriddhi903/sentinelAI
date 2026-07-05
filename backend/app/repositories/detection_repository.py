@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 from uuid import uuid4
 
@@ -25,9 +25,9 @@ class DetectionRepository(BaseRepository):
             return None
         for event in detections:
             event.setdefault("detection_id", str(uuid4()))
-            event.setdefault("generated_at", datetime.utcnow())
+            event.setdefault("generated_at", datetime.now(UTC))
         await self.collection.insert_many(detections)
 
     async def find_by_upload_id(self, upload_id: str) -> list[dict[str, Any]]:
-        cursor = self.collection.find({"upload_id": upload_id})
+        cursor = self.sort_cursor(self.collection.find({"upload_id": upload_id}))
         return [self.sanitize_document(doc) async for doc in cursor]

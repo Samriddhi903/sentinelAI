@@ -47,6 +47,18 @@ class InMemoryUploadRepository:
         self.documents[upload_id] = document
         return document
 
+    async def transition_status(
+        self,
+        upload_id: str,
+        *,
+        expected: set[UploadStatus],
+        target: UploadStatus,
+    ) -> dict[str, Any] | None:
+        document = self.documents.get(upload_id)
+        if document is None or document["status"] not in {status.value for status in expected}:
+            return None
+        return await self.update_status(upload_id, target)
+
     async def update_processing_result(
         self,
         upload_id: str,
@@ -75,7 +87,9 @@ class InMemoryUploadRepository:
     async def delete_by_upload_id(self, upload_id: str) -> None:
         self.documents.pop(upload_id, None)
 
-    async def update_normalization_result(self, upload_id: str, *, status: UploadStatus, normalized_at) -> dict[str, Any] | None:
+    async def update_normalization_result(
+        self, upload_id: str, *, status: UploadStatus, normalized_at
+    ) -> dict[str, Any] | None:
         document = self.documents.get(upload_id)
         if document is None:
             return None
@@ -83,7 +97,9 @@ class InMemoryUploadRepository:
         self.documents[upload_id] = document
         return document
 
-    async def update_feature_extraction_result(self, upload_id: str, *, status: UploadStatus, generated_at) -> dict[str, Any] | None:
+    async def update_feature_extraction_result(
+        self, upload_id: str, *, status: UploadStatus, generated_at
+    ) -> dict[str, Any] | None:
         document = self.documents.get(upload_id)
         if document is None:
             return None
@@ -91,7 +107,9 @@ class InMemoryUploadRepository:
         self.documents[upload_id] = document
         return document
 
-    async def update_analysis_result(self, upload_id: str, *, status: UploadStatus, analyzed_at) -> dict[str, Any] | None:
+    async def update_analysis_result(
+        self, upload_id: str, *, status: UploadStatus, analyzed_at
+    ) -> dict[str, Any] | None:
         document = self.documents.get(upload_id)
         if document is None:
             return None

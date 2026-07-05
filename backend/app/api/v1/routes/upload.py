@@ -59,4 +59,20 @@ async def get_analysis(
     upload_id: str,
     orchestrator: SecurityAnalysisOrchestratorDep,
 ) -> SecurityAnalysisResponse:
-    return await orchestrator.get_analysis(upload_id)
+    result = await orchestrator.get_analysis(upload_id)
+
+    from app.core.logging import get_logger
+
+    logger = get_logger(__name__)
+    logger.info(
+        "route_get_analysis_returning",
+        extra={
+            "upload_id": upload_id,
+            "result_keys": list(result.keys()),
+            "has_anomaly_detection": "anomaly_detection" in result,
+            "anomaly_detection": result.get("anomaly_detection"),
+        },
+    )
+
+    return result
+

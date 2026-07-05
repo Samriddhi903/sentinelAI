@@ -1,5 +1,6 @@
 """Upload orchestration service."""
 
+from datetime import UTC, datetime
 from uuid import uuid4
 
 from app.core.exceptions import DatabaseUnavailableError, FileStorageError, UploadNotFoundError
@@ -9,9 +10,8 @@ from app.models.upload import UploadStatus
 from app.repositories.upload_repository import UploadRepository
 from app.schemas.upload import UploadCreateResponse, UploadStatusResponse
 from app.services.file_storage_service import FileStorageService
-from app.services.upload_validator import UploadValidator
 from app.services.format_detection_service import FormatDetectionService
-from datetime import datetime, UTC
+from app.services.upload_validator import UploadValidator
 
 logger = get_logger(__name__)
 
@@ -103,8 +103,13 @@ class UploadService:
         if document["status"] != UploadStatus.UPLOADED.value:
             raise FileStorageError("upload not in uploaded state")
 
-        # mark processing
-        await self._upload_repository.update_status(upload_id, UploadStatus.PROCESSING)
+        claimed = await self._upload_repository.transition_status(
+            upload_id,
+            expected={UploadStatus.UPLOADED},
+            target=UploadStatus.PROCESSING,
+        )
+        if claimed is None:
+            raise FileStorageError("upload not in uploaded state")
 
         try:
             content = await self._file_storage.read_file(document["filename"])  # bytes
@@ -125,7 +130,11 @@ class UploadService:
                 processed_at=processed_at,
             )
         except Exception:
-            await self._upload_repository.update_status(upload_id, UploadStatus.FAILED)
+            await self._upload_repository.transition_status(
+                upload_id,
+                expected={UploadStatus.PROCESSING},
+                target=UploadStatus.FAILED,
+            )
             raise
 
         if updated is None:

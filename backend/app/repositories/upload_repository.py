@@ -5,7 +5,6 @@ from typing import Any
 from uuid import uuid4
 
 from motor.motor_asyncio import AsyncIOMotorDatabase
-
 from pymongo import ReturnDocument
 
 from app.database.base_repository import BaseRepository
@@ -56,6 +55,23 @@ class UploadRepository(BaseRepository):
         )
         return result
 
+    async def transition_status(
+        self,
+        upload_id: str,
+        *,
+        expected: set[UploadStatus],
+        target: UploadStatus,
+    ) -> dict[str, Any] | None:
+        """Atomically move an upload when its current state is expected."""
+        return await self.collection.find_one_and_update(
+            {
+                "upload_id": upload_id,
+                "status": {"$in": [status.value for status in expected]},
+            },
+            {"$set": {"status": target.value}},
+            return_document=ReturnDocument.AFTER,
+        )
+
     async def update_processing_result(
         self,
         upload_id: str,
@@ -74,7 +90,9 @@ class UploadRepository(BaseRepository):
             }
         }
         result = await self.collection.find_one_and_update(
-            {"upload_id": upload_id}, update, return_document=ReturnDocument.AFTER
+            {"upload_id": upload_id, "status": UploadStatus.PROCESSING.value},
+            update,
+            return_document=ReturnDocument.AFTER,
         )
         return result
 
@@ -83,7 +101,9 @@ class UploadRepository(BaseRepository):
     ) -> dict[str, Any] | None:
         update = {"$set": {"status": status.value, "normalized_at": normalized_at}}
         result = await self.collection.find_one_and_update(
-            {"upload_id": upload_id}, update, return_document=ReturnDocument.AFTER
+            {"upload_id": upload_id, "status": UploadStatus.NORMALIZING.value},
+            update,
+            return_document=ReturnDocument.AFTER,
         )
         return result
 
@@ -92,7 +112,9 @@ class UploadRepository(BaseRepository):
     ) -> dict[str, Any] | None:
         update = {"$set": {"status": status.value, "features_generated_at": generated_at}}
         result = await self.collection.find_one_and_update(
-            {"upload_id": upload_id}, update, return_document=ReturnDocument.AFTER
+            {"upload_id": upload_id, "status": UploadStatus.FEATURE_EXTRACTING.value},
+            update,
+            return_document=ReturnDocument.AFTER,
         )
         return result
 
@@ -101,7 +123,9 @@ class UploadRepository(BaseRepository):
     ) -> dict[str, Any] | None:
         update = {"$set": {"status": status.value, "analysis_generated_at": analyzed_at}}
         result = await self.collection.find_one_and_update(
-            {"upload_id": upload_id}, update, return_document=ReturnDocument.AFTER
+            {"upload_id": upload_id, "status": UploadStatus.ANALYZING.value},
+            update,
+            return_document=ReturnDocument.AFTER,
         )
         return result
 

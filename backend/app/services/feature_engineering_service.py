@@ -1,11 +1,12 @@
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 from typing import Any
 from uuid import uuid4
 
-from app.repositories.upload_repository import UploadRepository
+from app.models.pipeline import FeatureDocument
+from app.models.upload import UploadStatus
 from app.repositories.event_repository import EventRepository
 from app.repositories.feature_repository import FeatureRepository
-from app.models.upload import UploadStatus
+from app.repositories.upload_repository import UploadRepository
 
 
 class FeatureEngineeringService:
@@ -31,8 +32,15 @@ class FeatureEngineeringService:
 
             raise FileStorageError("upload must be normalized before feature extraction")
 
-        # mark extracting
-        await self._upload_repository.update_status(upload_id, UploadStatus.FEATURE_EXTRACTING)
+        claimed = await self._upload_repository.transition_status(
+            upload_id,
+            expected={UploadStatus.NORMALIZED},
+            target=UploadStatus.FEATURE_EXTRACTING,
+        )
+        if claimed is None:
+            from app.core.exceptions import FileStorageError
+
+            raise FileStorageError("upload must be normalized before feature extraction")
 
         try:
             events = await self._event_repository.find_by_upload_id(upload_id)
@@ -60,7 +68,11 @@ class FeatureEngineeringService:
                 if not src or src == "_global":
                     continue
                 if src not in merged:
-                    merged[src] = {k: v for k, v in f.items() if k not in {"feature_id", "upload_id", "generated_at"}}
+                    merged[src] = {
+                        k: v
+                        for k, v in f.items()
+                        if k not in {"feature_id", "upload_id", "generated_at"}
+                    }
                     continue
 
                 base = merged[src]
@@ -82,17 +94,28 @@ class FeatureEngineeringService:
                 data.setdefault("generated_at", datetime.now(UTC))
                 features.append(data)
 
-            await self._feature_repository.insert_features(features)
+            typed_features = [FeatureDocument.model_validate(feature) for feature in features]
+            await self._feature_repository.insert_features(
+                [feature.model_dump() for feature in typed_features]
+            )
 
             generated_at = datetime.now(UTC)
             updated = await self._upload_repository.update_feature_extraction_result(
                 upload_id, status=UploadStatus.FEATURES_GENERATED, generated_at=generated_at
             )
         except Exception:
-            await self._upload_repository.update_status(upload_id, UploadStatus.FAILED)
+            await self._upload_repository.transition_status(
+                upload_id,
+                expected={UploadStatus.FEATURE_EXTRACTING},
+                target=UploadStatus.FAILED,
+            )
             raise
 
         if updated is None:
             raise Exception("upload record missing after feature extraction")
 
-        return {"upload_id": updated["upload_id"], "status": updated["status"], "generated_at": generated_at}
+        return {
+            "upload_id": updated["upload_id"],
+            "status": updated["status"],
+            "generated_at": generated_at,
+        }

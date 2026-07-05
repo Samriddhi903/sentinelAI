@@ -26,3 +26,9 @@ class BaseRepository:
             return value
 
         return clean_value(document)  # type: ignore[return-value]
+
+    @staticmethod
+    def sort_cursor(cursor, field: str = "generated_at"):
+        """Apply stable newest-first ordering while supporting lightweight test cursors."""
+        sort = getattr(cursor, "sort", None)
+        return sort([(field, -1), ("_id", -1)]) if callable(sort) else cursor

@@ -8,8 +8,16 @@ from app.schemas.investigation import InvestigationSchema
 from app.schemas.risk import RiskAssessmentSchema
 
 
+
 class TimelineSchema(BaseModel):
     attack_chain: List[str]
+
+
+
+class AnomalyDetectionSchema(BaseModel):
+    anomaly_score: int
+    is_anomalous: bool
+
 
 
 class SecurityAnalysisResponse(BaseModel):
@@ -18,6 +26,8 @@ class SecurityAnalysisResponse(BaseModel):
     risk_assessment: RiskAssessmentSchema
     timeline: TimelineSchema
     investigation: InvestigationSchema
+    anomaly_detection: AnomalyDetectionSchema
+
 
 
 class SecurityAnalysisSummaryResponse(BaseModel):
@@ -26,3 +36,4 @@ class SecurityAnalysisSummaryResponse(BaseModel):
     severity: str
     detection_count: int
     investigation_id: str
+

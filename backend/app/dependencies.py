@@ -235,6 +235,7 @@ def get_security_analysis_orchestrator(
     risk_engine: RiskScoringEngineDep,
     timeline_builder: TimelineBuilderDep,
     investigation_service: InvestigationServiceDep,
+    anomaly_detection_service: AnomalyDetectionServiceDep,
 ) -> SecurityAnalysisOrchestrator:
     return SecurityAnalysisOrchestrator(
         upload_repository=upload_repository,
@@ -247,7 +248,9 @@ def get_security_analysis_orchestrator(
         risk_engine=risk_engine,
         timeline_builder=timeline_builder,
         investigation_service=investigation_service,
+        anomaly_detection_service=anomaly_detection_service,
     )
+
 
 
 SecurityAnalysisOrchestratorDep = Annotated[SecurityAnalysisOrchestrator, Depends(get_security_analysis_orchestrator)]

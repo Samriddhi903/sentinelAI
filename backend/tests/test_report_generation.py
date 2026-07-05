@@ -206,6 +206,24 @@ async def test_generate_report_stores_fallback_on_unexpected_gemini_error():
 
 
 @pytest.mark.asyncio
+async def test_generate_report_builds_structured_attack_chain_and_iocs():
+    service, upload_id, report_repo = await build_report_service()
+
+    await service.generate_report(upload_id)
+
+    stored = report_repo.reports[upload_id]
+    phase = stored["attack_chain"][0]
+    assert phase["name"] == "Initial Access"
+    assert phase["detections"] == ["brute_force"]
+    assert phase["mitre"] == ["T1110"]
+    assert phase["evidence"]["ips"] == ["203.0.113.10"]
+    assert stored["metadata"]["detection_count"] == 1
+    assert stored["metadata"]["correlated_event_count"] == 1
+    assert stored["iocs"]["ips"] == ["203.0.113.10"]
+    assert stored["recommendations"]["immediate_containment"]
+
+
+@pytest.mark.asyncio
 async def test_generate_report_upload_not_found():
     service, _, _ = await build_report_service()
 

@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 from uuid import uuid4
 
@@ -21,7 +21,7 @@ class ReportRepository(BaseRepository):
 
     async def upsert_report(self, report: dict[str, Any]) -> dict[str, Any]:
         report.setdefault("report_id", str(uuid4()))
-        report.setdefault("generated_at", datetime.utcnow())
+        report.setdefault("generated_at", datetime.now(UTC))
         await self.collection.replace_one(
             {"upload_id": report["upload_id"]},
             report,

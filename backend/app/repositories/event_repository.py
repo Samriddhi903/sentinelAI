@@ -1,12 +1,10 @@
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 from uuid import uuid4
 
 from motor.motor_asyncio import AsyncIOMotorDatabase
-from pymongo import ReturnDocument
 
 from app.database.base_repository import BaseRepository
-
 
 EVENTS_COLLECTION = "events"
 
@@ -28,9 +26,9 @@ class EventRepository(BaseRepository):
         for e in events:
             e.setdefault("event_id", str(uuid4()))
             if "timestamp" not in e:
-                e["timestamp"] = datetime.utcnow()
+                e["timestamp"] = datetime.now(UTC)
         await self.collection.insert_many(events)
 
     async def find_by_upload_id(self, upload_id: str) -> list[dict[str, Any]]:
-        cursor = self.collection.find({"upload_id": upload_id})
-        return [doc async for doc in cursor]
+        cursor = self.sort_cursor(self.collection.find({"upload_id": upload_id}), field="timestamp")
+        return [self.sanitize_document(doc) async for doc in cursor]

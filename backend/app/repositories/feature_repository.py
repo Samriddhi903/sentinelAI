@@ -1,11 +1,10 @@
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 from uuid import uuid4
 
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from app.database.base_repository import BaseRepository
-
 
 FEATURES_COLLECTION = "features"
 
@@ -25,9 +24,9 @@ class FeatureRepository(BaseRepository):
             return None
         for f in features:
             f.setdefault("feature_id", str(uuid4()))
-            f.setdefault("generated_at", datetime.utcnow())
+            f.setdefault("generated_at", datetime.now(UTC))
         await self.collection.insert_many(features)
 
     async def find_by_upload_id(self, upload_id: str) -> list[dict[str, Any]]:
-        cursor = self.collection.find({"upload_id": upload_id})
-        return [doc async for doc in cursor]
+        cursor = self.sort_cursor(self.collection.find({"upload_id": upload_id}))
+        return [self.sanitize_document(doc) async for doc in cursor]

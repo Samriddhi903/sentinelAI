@@ -1,13 +1,15 @@
 from __future__ import annotations
 
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass
-from datetime import datetime, timezone
-from typing import Any, Callable, Iterable, List
+from datetime import UTC, datetime
+from typing import Any
 from uuid import uuid4
 
 from pydantic import BaseModel, Field
 
 from app.models.security import DetectionSeverity
+from app.models.security_catalog import get_rule_metadata
 
 
 class Detection(BaseModel):
@@ -18,7 +20,7 @@ class Detection(BaseModel):
     severity: DetectionSeverity
     confidence: float = Field(default=1.0)
     details: dict[str, Any] = Field(default_factory=dict)
-    generated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    generated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 @dataclass(frozen=True)
@@ -29,27 +31,32 @@ class DetectionRule:
     description: str
     confidence: float = 1.0
 
-    def evaluate(self, upload_id: str, source_ip: str, feature_document: dict[str, Any]) -> Detection | None:
+    def evaluate(
+        self, upload_id: str, source_ip: str, feature_document: dict[str, Any]
+    ) -> Detection | None:
         if self.condition(feature_document):
+            metadata = get_rule_metadata(self.detection_type)
             return Detection(
                 upload_id=upload_id,
                 source_ip=source_ip,
                 detection_type=self.detection_type,
-                severity=self.severity,
+                severity=metadata.severity if metadata else self.severity,
                 confidence=self.confidence,
                 details={
                     "description": self.description,
-                    "feature_document": {k: v for k, v in feature_document.items() if k != "generated_at"},
+                    "feature_document": {
+                        k: v for k, v in feature_document.items() if k != "generated_at"
+                    },
                 },
             )
         return None
 
 
 class DetectionEngine:
-    def __init__(self, rules: List[DetectionRule] | None = None) -> None:
+    def __init__(self, rules: list[DetectionRule] | None = None) -> None:
         self._rules = rules if rules is not None else self._default_rules()
 
-    def _default_rules(self) -> List[DetectionRule]:
+    def _default_rules(self) -> list[DetectionRule]:
         return [
             DetectionRule(
                 detection_type="sql_injection",
@@ -90,8 +97,10 @@ class DetectionEngine:
             DetectionRule(
                 detection_type="brute_force",
                 severity=DetectionSeverity.MEDIUM,
-                condition=lambda f: int(f.get("brute_force_attempt_count", 0)) >= 5
-                or int(f.get("failed_login_count", 0)) >= 5,
+                condition=lambda f: (
+                    int(f.get("brute_force_attempt_count", 0)) >= 5
+                    or int(f.get("failed_login_count", 0)) >= 5
+                ),
                 description="Brute force activity detected.",
             ),
             DetectionRule(
@@ -119,7 +128,9 @@ class DetectionEngine:
                         or int(f.get("privilege_escalation_count", 0)) > 0
                     )
                 ),
-                description="Privilege escalation activity detected (sudo with suspicious context).",
+                description=(
+                    "Privilege escalation activity detected (sudo with suspicious context)."
+                ),
             ),
             DetectionRule(
                 detection_type="reconnaissance",
@@ -171,7 +182,7 @@ class DetectionEngine:
             ),
         ]
 
-    def detect(self, feature_documents: Iterable[dict[str, Any]]) -> List[Detection]:
+    def detect(self, feature_documents: Iterable[dict[str, Any]]) -> list[Detection]:
         detections: list[Detection] = []
         for document in feature_documents:
             upload_id = document.get("upload_id", "unknown")

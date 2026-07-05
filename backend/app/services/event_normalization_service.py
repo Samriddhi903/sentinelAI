@@ -1,12 +1,14 @@
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 from typing import Any
 from uuid import uuid4
 
-from app.repositories.upload_repository import UploadRepository
-from app.repositories.event_repository import EventRepository
-from app.services.file_storage_service import FileStorageService
+from app.core.exceptions import FileStorageError, UploadNotFoundError
+from app.models.pipeline import NormalizedEvent
+from app.models.upload import UploadStatus
 from app.parsers.registry import ParserRegistry
-from app.core.exceptions import UploadNotFoundError, FileStorageError
+from app.repositories.event_repository import EventRepository
+from app.repositories.upload_repository import UploadRepository
+from app.services.file_storage_service import FileStorageService
 
 
 class EventNormalizationService:
@@ -30,10 +32,13 @@ class EventNormalizationService:
         if document["status"] != "processed":
             raise FileStorageError("upload must be in processed state to normalize")
 
-        from app.models.upload import UploadStatus
-
-        # mark normalizing
-        await self._upload_repository.update_status(upload_id, UploadStatus.NORMALIZING)
+        claimed = await self._upload_repository.transition_status(
+            upload_id,
+            expected={UploadStatus.PROCESSED},
+            target=UploadStatus.NORMALIZING,
+        )
+        if claimed is None:
+            raise FileStorageError("upload must be in processed state to normalize")
 
         try:
             content = await self._file_storage.read_file(document["filename"])  # bytes
@@ -78,15 +83,21 @@ class EventNormalizationService:
                     }
                 ]
 
-            # persist events
-            await self._event_repository.insert_events(normalized_events)
+            typed_events = [NormalizedEvent.model_validate(event) for event in normalized_events]
+            await self._event_repository.insert_events(
+                [event.model_dump() for event in typed_events]
+            )
 
             normalized_at = datetime.now(UTC)
             updated = await self._upload_repository.update_normalization_result(
                 upload_id, status=UploadStatus.NORMALIZED, normalized_at=normalized_at
             )
         except Exception:
-            await self._upload_repository.update_status(upload_id, UploadStatus.FAILED)
+            await self._upload_repository.transition_status(
+                upload_id,
+                expected={UploadStatus.NORMALIZING},
+                target=UploadStatus.FAILED,
+            )
             raise
 
         if updated is None:
