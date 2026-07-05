@@ -4,8 +4,6 @@ import gzip
 import io
 import re
 from pathlib import PurePath
-
-import magic
 import mimetypes
 from app.core.config import Settings
 from app.core.exceptions import (

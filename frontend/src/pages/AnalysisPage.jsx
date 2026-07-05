@@ -46,7 +46,6 @@ export default function AnalysisPage() {
         const res = await sentinelApi.getAnalysis(uploadId)
         if (!alive) return
         setAnalysis(res)
-        console.log("Analysis Response:", res)
       } catch (e) {
         if (!alive) return
         setError(e?.response?.data?.detail || e.message || 'Failed to fetch analysis')
