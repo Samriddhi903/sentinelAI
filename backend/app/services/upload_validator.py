@@ -6,7 +6,7 @@ import re
 from pathlib import PurePath
 
 import magic
-
+import mimetypes
 from app.core.config import Settings
 from app.core.exceptions import (
     EmptyFileError,
@@ -71,7 +71,9 @@ class UploadValidator:
             raise FileTooLargeError(self._max_size_mb())
 
         extension = self._extract_extension(sanitized_name)
-        mime_type = magic.from_buffer(content, mime=True)
+
+        mime_type, _ = mimetypes.guess_type(sanitized_name)
+        mime_type = mime_type or "application/octet-stream"
 
         self._validate_mime(extension, mime_type)
 
