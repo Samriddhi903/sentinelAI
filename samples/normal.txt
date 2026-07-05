@@ -1,0 +1,3 @@
+Jun 07 10:00:01 server sshd[1001]: Accepted password for user from 192.168.1.10 port 55000 ssh2
+Jun 07 10:01:01 server systemd[1]: nginx.service: Started successfully
+Jun 07 10:02:01 server CR

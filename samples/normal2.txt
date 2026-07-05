@@ -1,0 +1,45 @@
+Jun 07 08:00:01 web01 sshd[1001]: Accepted password for alice from 10.0.1.12 port 50120 ssh2
+Jun 07 08:01:15 web01 sudo: alice : TTY=pts/0 ; PWD=/home/alice ; USER=root ; COMMAND=/usr/bin/systemctl restart nginx
+Jun 07 08:02:01 web01 systemd[1]: Started nginx.service
+
+Jun 07 08:05:21 db01 sshd[1002]: Accepted password for bob from 10.0.1.15 port 50125 ssh2
+Jun 07 08:05:40 db01 sudo: bob : TTY=pts/0 ; PWD=/home/bob ; USER=root ; COMMAND=/usr/bin/journalctl -xe
+Jun 07 08:06:00 db01 systemd[1]: Started backup.service
+
+Jun 07 08:10:01 web01 CRON[2001]: (root) CMD (/usr/local/bin/backup.sh)
+Jun 07 08:10:05 web01 backup[2002]: Backup completed successfully
+
+Jun 07 08:15:01 mail01 sshd[1003]: Accepted password for charlie from 10.0.1.18 port 50130 ssh2
+Jun 07 08:15:20 mail01 postfix[3001]: message accepted for delivery
+Jun 07 08:15:45 mail01 postfix[3002]: delivery successful
+
+Jun 07 08:20:01 app01 sshd[1004]: Accepted password for dave from 10.0.1.22 port 50140 ssh2
+Jun 07 08:20:15 app01 sudo: dave : TTY=pts/0 ; PWD=/opt/app ; USER=root ; COMMAND=/usr/bin/systemctl status app
+Jun 07 08:21:01 app01 systemd[1]: Started application.service
+
+Jun 07 08:25:01 web01 nginx[4001]: GET /index.html 200
+Jun 07 08:25:03 web01 nginx[4002]: GET /assets/logo.png 200
+Jun 07 08:25:04 web01 nginx[4003]: GET /contact 200
+
+Jun 07 08:30:01 db01 mysqld[5001]: Connection established for user reporting
+Jun 07 08:30:15 db01 mysqld[5002]: Query executed successfully
+
+Jun 07 08:35:01 web01 sshd[1005]: Accepted password for eve from 10.0.1.30 port 50150 ssh2
+Jun 07 08:35:15 web01 sudo: eve : TTY=pts/0 ; PWD=/var/www ; USER=root ; COMMAND=/usr/bin/ls
+Jun 07 08:36:01 web01 systemd[1]: Reloaded nginx.service
+
+Jun 07 08:40:01 app01 CRON[6001]: (root) CMD (/usr/local/bin/cleanup.sh)
+Jun 07 08:40:10 app01 cleanup[6002]: Cleanup completed successfully
+
+Jun 07 08:45:01 web01 nginx[7001]: GET /dashboard 200
+Jun 07 08:45:05 web01 nginx[7002]: GET /profile 200
+Jun 07 08:45:10 web01 nginx[7003]: GET /settings 200
+
+Jun 07 08:50:01 db01 sshd[1006]: Accepted password for analyst from 10.0.1.40 port 50160 ssh2
+Jun 07 08:50:30 db01 systemd[1]: Started reporting.service
+
+Jun 07 08:55:01 app01 systemd[1]: Started worker.service
+Jun 07 08:55:10 app01 worker[8001]: Task completed successfully
+
+Jun 07 09:00:01 web01 sshd[1007]: Accepted password for admin from 10.0.1.50 port 50170 ssh2
+Jun 07 09:00:20 web01 systemd[1]: Started monitoring.service

@@ -1,0 +1,36 @@
+Jun 08 09:00:01 fileserver sshd[1001]: Accepted password for analyst from 10.1.1.15 port 50001 ssh2
+Jun 08 09:00:15 fileserver sudo: analyst : TTY=pts/0 ; PWD=/home/analyst ; USER=root ; COMMAND=/usr/bin/systemctl status smb
+
+Jun 08 09:05:01 fileserver CRON[2001]: (root) CMD (/usr/local/bin/backup.sh)
+Jun 08 09:05:15 fileserver backup[2002]: Backup completed successfully
+
+Jun 08 09:10:01 webserver nginx[3001]: GET /dashboard 200
+Jun 08 09:10:03 webserver nginx[3002]: GET /reports 200
+Jun 08 09:10:05 webserver nginx[3003]: GET /profile 200
+
+Jun 08 09:15:01 dbserver sshd[1002]: Accepted password for dbadmin from 10.1.1.20 port 50002 ssh2
+Jun 08 09:15:20 dbserver sudo: dbadmin : TTY=pts/0 ; PWD=/var/lib/mysql ; USER=root ; COMMAND=/usr/bin/systemctl status mysql
+
+Jun 08 09:20:01 dbserver mysqld[4001]: Connection established for reporting_user
+Jun 08 09:20:10 dbserver mysqld[4002]: Query executed successfully
+
+Jun 08 09:25:01 mailserver postfix[5001]: message accepted for delivery
+Jun 08 09:25:04 mailserver postfix[5002]: delivery successful
+
+Jun 08 09:30:01 appserver sshd[1003]: Accepted password for developer from 10.1.1.25 port 50003 ssh2
+Jun 08 09:30:15 appserver sudo: developer : TTY=pts/0 ; PWD=/opt/app ; USER=root ; COMMAND=/usr/bin/systemctl restart app
+
+Jun 08 09:35:01 appserver systemd[1]: Started application.service
+Jun 08 09:35:15 appserver app[6001]: Health check passed
+
+Jun 08 09:40:01 fileserver sshd[1004]: Accepted password for auditor from 10.1.1.30 port 50004 ssh2
+Jun 08 09:40:20 fileserver sudo: auditor : TTY=pts/0 ; PWD=/var/log ; USER=root ; COMMAND=/usr/bin/journalctl -n 100
+
+Jun 08 09:45:01 webserver nginx[7001]: GET /api/status 200
+Jun 08 09:45:05 webserver nginx[7002]: GET /api/users 200
+
+Jun 08 09:50:01 monitoring systemd[1]: Started monitoring-agent.service
+Jun 08 09:50:10 monitoring agent[8001]: Metrics collected successfully
+
+Jun 08 09:55:01 appserver CRON[9001]: (root) CMD (/usr/local/bin/cleanup.sh)
+Jun 08 09:55:10 appserver cleanup[9002]: Cleanup completed successfully

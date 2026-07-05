@@ -24,6 +24,7 @@ from app.repositories.feature_repository import FeatureRepository
 from app.repositories.detection_repository import DetectionRepository
 from app.repositories.risk_assessment_repository import RiskAssessmentRepository
 from app.repositories.investigation_repository import InvestigationRepository
+from app.repositories.report_repository import ReportRepository
 from app.services.feature_engineering_service import FeatureEngineeringService
 from app.services.detection_engine import DetectionEngine
 from app.services.mitre_mapper import MitreMapper
@@ -31,6 +32,11 @@ from app.services.risk_scoring_engine import RiskScoringEngine
 from app.services.timeline_builder import TimelineBuilder
 from app.services.investigation_service import InvestigationService
 from app.services.security_analysis_orchestrator import SecurityAnalysisOrchestrator
+from app.services.gemini_service import GeminiService
+from app.services.report_generation_service import ReportGenerationService
+from app.services.anomaly_detection_service import AnomalyDetectionService
+from app.repositories.anomaly_repository import AnomalyRepository
+
 
 SettingsDep = Annotated[Settings, Depends(get_settings)]
 DatabaseManagerDep = Annotated[DatabaseManager, Depends(get_database_manager)]
@@ -164,6 +170,15 @@ def get_investigation_repository(db_manager: DatabaseManagerDep) -> Investigatio
 InvestigationRepositoryDep = Annotated[InvestigationRepository, Depends(get_investigation_repository)]
 
 
+def get_report_repository(db_manager: DatabaseManagerDep) -> ReportRepository:
+    if db_manager.database is None:
+        raise DatabaseUnavailableError()
+    return ReportRepository(db_manager.database)
+
+
+ReportRepositoryDep = Annotated[ReportRepository, Depends(get_report_repository)]
+
+
 def get_detection_engine() -> DetectionEngine:
     return DetectionEngine()
 
@@ -238,6 +253,30 @@ def get_security_analysis_orchestrator(
 SecurityAnalysisOrchestratorDep = Annotated[SecurityAnalysisOrchestrator, Depends(get_security_analysis_orchestrator)]
 
 
+def get_gemini_service(settings: SettingsDep) -> GeminiService:
+    return GeminiService(api_key=settings.gemini_api_key)
+
+
+GeminiServiceDep = Annotated[GeminiService, Depends(get_gemini_service)]
+
+
+def get_report_generation_service(
+    upload_repository: UploadRepositoryDep,
+    report_repository: ReportRepositoryDep,
+    analysis_orchestrator: SecurityAnalysisOrchestratorDep,
+    gemini_service: GeminiServiceDep,
+) -> ReportGenerationService:
+    return ReportGenerationService(
+        upload_repository=upload_repository,
+        report_repository=report_repository,
+        analysis_orchestrator=analysis_orchestrator,
+        gemini_service=gemini_service,
+    )
+
+
+ReportGenerationServiceDep = Annotated[ReportGenerationService, Depends(get_report_generation_service)]
+
+
 def get_feature_engineering_service(
     upload_repository: UploadRepositoryDep,
     event_repository: EventRepositoryDep,
@@ -251,3 +290,28 @@ def get_feature_engineering_service(
 
 
 FeatureEngineeringServiceDep = Annotated[FeatureEngineeringService, Depends(get_feature_engineering_service)]
+
+
+def get_anomaly_repository(db_manager: DatabaseManagerDep) -> AnomalyRepository:
+    if db_manager.database is None:
+        raise DatabaseUnavailableError()
+    return AnomalyRepository(db_manager.database)
+
+
+AnomalyRepositoryDep = Annotated[AnomalyRepository, Depends(get_anomaly_repository)]
+
+
+def get_anomaly_detection_service(
+    feature_repository: FeatureRepositoryDep,
+    anomaly_repository: AnomalyRepositoryDep,
+) -> AnomalyDetectionService:
+    return AnomalyDetectionService(
+        feature_repository=feature_repository,
+        anomaly_repository=anomaly_repository,
+    )
+
+
+AnomalyDetectionServiceDep = Annotated[
+    AnomalyDetectionService, Depends(get_anomaly_detection_service)
+]
+

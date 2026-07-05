@@ -11,3 +11,4 @@ class DetectionSeverity(StrEnum):
 DETECTIONS_COLLECTION = "detections"
 RISK_ASSESSMENTS_COLLECTION = "risk_assessments"
 INVESTIGATIONS_COLLECTION = "investigations"
+REPORTS_COLLECTION = "reports"

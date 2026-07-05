@@ -33,9 +33,15 @@ def test_detection_engine_produces_supported_detections(detection_engine: Detect
             "webshell_access_count": 1,
             "brute_force_attempt_count": 5,
             "failed_login_count": 5,
-            "privilege_escalation_count": 1,
-            "reconnaissance_count": 1,
+            # privilege_escalation_count alone is not sufficient anymore;
+            # include sudo + suspicious context.
+            "sudo_event_count": 1,
+            "privilege_escalation_count": 0,
+            "new_user_count": 0,
+            "password_change_count": 0,
             "suspicious_cron_count": 1,
+
+            "reconnaissance_count": 1,
             "critical_file_modification_count": 1,
         }
     ]
@@ -73,11 +79,14 @@ def test_risk_scoring_engine_clamps_score_and_assigns_critical_severity():
     detections = DetectionEngine().detect(features)
     assessment = engine.score_detections(detections)
 
-    assert assessment.score == 100
+    # With only privilege_escalation_count (no sudo + suspicious context),
+    # privilege_escalation should not be detected.
+    assert assessment.score == 85
     assert assessment.severity.value == "critical"
     assert assessment.upload_id == "upload-123"
     assert assessment.source_ip == "198.51.100.50"
-    assert set(assessment.detection_types) == {"sql_injection", "webshell_activity", "privilege_escalation"}
+    # privilege_escalation should not be present without sudo + suspicious context.
+    assert set(assessment.detection_types) == {"sql_injection", "webshell_activity"}
 
 
 def test_risk_scoring_engine_weights_account_and_credential_modifications():
@@ -121,12 +130,18 @@ def test_mitre_mapper_returns_expected_techniques():
 
 def test_timeline_builder_creates_ordered_attack_chain():
     engine = DetectionEngine()
+    # privilege_escalation now requires sudo + suspicious context.
+    # Keep brute force / auth-abuse indicators and add sudo + post-exploitation indicators
+    # so timeline remains stable.
     features = [
         {
             "upload_id": "upload-444",
             "source_ip": "198.51.100.60",
             "failed_login_count": 5,
-            "privilege_escalation_count": 1,
+            "sudo_event_count": 1,
+            "new_user_count": 1,
+            "password_change_count": 1,
+            "suspicious_cron_count": 1,
             "critical_file_modification_count": 1,
         }
     ]

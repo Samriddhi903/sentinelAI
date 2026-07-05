@@ -11,22 +11,27 @@ from app.services.mitre_mapper import MitreMapper
 class TestPrivilegeEscalationDetection:
     """Tests for privilege escalation detection via sudo events."""
 
-    def test_detect_sudo_event_count_greater_than_zero(self):
-        """Test that sudo_event_count > 0 triggers privilege_escalation detection."""
+    def test_no_privilege_escalation_on_benign_sudo(self):
+        """Sudo alone (admin activity) should not trigger privilege escalation."""
         engine = DetectionEngine()
         feature = {
             "upload_id": "test-upload",
             "source_ip": "198.51.100.50",
             "sudo_event_count": 1,
+            "brute_force_attempt_count": 0,
+            "failed_login_count": 0,
+            "successful_login_count": 0,
+            "new_user_count": 0,
+            "password_change_count": 0,
+            "suspicious_cron_count": 0,
+            "credential_modification_count": 0,
+            "command_execution_count": 0,
+            "privilege_escalation_count": 0,
         }
 
         detections = engine.detect([feature])
 
-        assert len(detections) > 0
-        assert any(d.detection_type == "privilege_escalation" for d in detections)
-        priv_esc = next(d for d in detections if d.detection_type == "privilege_escalation")
-        assert priv_esc.severity == DetectionSeverity.CRITICAL
-        assert priv_esc.confidence == 1.0
+        assert not any(d.detection_type == "privilege_escalation" for d in detections)
 
     def test_no_detection_when_sudo_count_zero(self):
         """Test that sudo_event_count == 0 does not trigger detection."""

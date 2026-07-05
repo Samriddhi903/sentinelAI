@@ -109,3 +109,12 @@ class AnalysisAlreadyExistsError(AppError):
             code="ANALYSIS_ALREADY_EXISTS",
             status_code=status.HTTP_409_CONFLICT,
         )
+
+
+class ReportNotFoundError(AppError):
+    def __init__(self, upload_id: str) -> None:
+        super().__init__(
+            detail=f"Report not found for upload: {upload_id}",
+            code="REPORT_NOT_FOUND",
+            status_code=status.HTTP_404_NOT_FOUND,
+        )

@@ -97,9 +97,29 @@ class DetectionEngine:
             DetectionRule(
                 detection_type="privilege_escalation",
                 severity=DetectionSeverity.CRITICAL,
-                condition=lambda f: int(f.get("sudo_event_count", 0)) > 0
-                or int(f.get("privilege_escalation_count", 0)) > 0,
-                description="Privilege escalation activity detected.",
+                # Require sudo + additional suspicious context.
+                # Do NOT trigger on sudo alone (common benign admin usage).
+                condition=lambda f: (
+                    int(f.get("sudo_event_count", 0)) > 0
+                    and (
+                        # brute force / repeated failures
+                        int(f.get("brute_force_attempt_count", 0)) >= 5
+                        or int(f.get("failed_login_count", 0)) >= 5
+                        # successful login after failures
+                        or (
+                            int(f.get("successful_login_count", 0)) > 0
+                            and int(f.get("failed_login_count", 0)) > 0
+                        )
+                        # post-exploitation indicators
+                        or int(f.get("new_user_count", 0)) > 0
+                        or int(f.get("password_change_count", 0)) > 0
+                        or int(f.get("suspicious_cron_count", 0)) > 0
+                        or int(f.get("credential_modification_count", 0)) > 0
+                        or int(f.get("command_execution_count", 0)) > 0
+                        or int(f.get("privilege_escalation_count", 0)) > 0
+                    )
+                ),
+                description="Privilege escalation activity detected (sudo with suspicious context).",
             ),
             DetectionRule(
                 detection_type="reconnaissance",

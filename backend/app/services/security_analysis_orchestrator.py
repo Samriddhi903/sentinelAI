@@ -25,9 +25,13 @@ from app.services.mitre_mapper import MitreMapper
 from app.services.risk_scoring_engine import RiskScoringEngine, RiskAssessment
 from app.services.timeline_builder import TimelineBuilder
 from app.services.investigation_service import InvestigationService, Investigation
+from app.services.anomaly_detection_service import AnomalyDetectionService
 
 
 class SecurityAnalysisOrchestrator:
+
+
+
     def __init__(
         self,
         upload_repository: UploadRepository,
@@ -51,7 +55,11 @@ class SecurityAnalysisOrchestrator:
         self._risk_engine = risk_engine
         self._timeline_builder = timeline_builder
         self._investigation_service = investigation_service
+        self._anomaly_detection_service = None
+
+
         self._logger = get_logger(__name__)
+
 
     async def analyze_upload(self, upload_id: str) -> dict[str, Any]:
         upload = await self._upload_repository.find_by_upload_id(upload_id)
@@ -118,6 +126,19 @@ class SecurityAnalysisOrchestrator:
                 extra={"upload_id": upload_id, "investigation_id": investigation.investigation_id},
             )
 
+            anomaly_detection = None
+            try:
+                if self._anomaly_detection_service is not None:
+                    anomaly_detection = await self._anomaly_detection_service.run_for_upload(
+                        upload_id
+                    )
+            except Exception as exc:
+                self._logger.warning(
+                    "anomaly_detection_integration_failed",
+                    extra={"upload_id": upload_id, "error": str(exc)},
+                )
+
+
             await self._upload_repository.update_analysis_result(
                 upload_id,
                 status=UploadStatus.ANALYZED,
@@ -125,13 +146,21 @@ class SecurityAnalysisOrchestrator:
             )
             self._logger.info("analysis_completed", extra={"upload_id": upload_id})
 
-            return {
+            response: dict[str, Any] = {
                 "upload_id": upload_id,
                 "risk_score": risk_assessment.score,
                 "severity": risk_assessment.severity.value,
                 "detection_count": len(detection_docs),
                 "investigation_id": investigation.investigation_id,
             }
+            if anomaly_detection is not None:
+                response["anomaly_detection"] = {
+                    "anomaly_score": int(anomaly_detection.get("anomaly_score", 0)),
+                    "is_anomalous": bool(anomaly_detection.get("is_anomalous", False)),
+                }
+
+            return response
+
         except Exception as exc:
             await self._upload_repository.update_status(upload_id, UploadStatus.FAILED)
             self._logger.exception("analysis_failed", extra={"upload_id": upload_id, "error": str(exc)})
